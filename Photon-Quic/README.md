@@ -3,7 +3,7 @@
 **Author:** Cas Wang  
 **Course:** CS544 - Computer Networks  
 **Professor:** Brian Mitchell  
-**Project:** QUIC-based Custom Protocol Implementation --PhotonStream
+**Project:** QUIC-based Custom Protocol Implementation  
 **Version:** 1.0-SNAPSHOT
 
 ---
@@ -17,6 +17,21 @@ and features multi-track synchronization, structured session negotiation, and fu
 This implementation focuses on the `INIT_REQUEST`, `INIT_RESPONSE`, and `END_SESSION` messages and validates state
 transitions via a defined DFA.
 
+> 🔀 **Branching Notice**: This repository has two branches:
+> - `main`: always contains the **latest and most stable** implementation ✅
+> - `dev`: used for ongoing development, may be unstable 🧪
+
+---
+
+## 🛠️ Project Build Details
+
+When built using Maven, this project generates a **standalone UBER JAR** using the Maven Shade Plugin. This JAR contains
+all dependencies (including Kwik), so it can be run without any additional setup.
+
+```
+target/Photon-Quic-1.0-SNAPSHOT-shaded.jar
+```
+
 ---
 
 ## 🖥️ How to Compile
@@ -27,30 +42,64 @@ Make sure you have **Java 21+** and **Maven 3+** installed.
 mvn clean package
 ```
 
-This will produce:
+This will generate the fat JAR:
 
 ```
-target/Photon-Quic-1.0-SNAPSHOT.jar
+target/Photon-Quic-1.0-SNAPSHOT-shaded.jar
 ```
+
+---
+
+## 🧰 How to Install Maven on a Linux-Based System
+
+If Maven is not installed, you can install it using your system package manager:
+
+### For Debian/Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install maven
+```
+
+### For Fedora/RHEL:
+
+```bash
+sudo dnf install maven
+```
+
+### Verify Installation:
+
+```bash
+mvn -version
+```
+
+You should see output confirming the Maven version installed.
 
 ---
 
 ## 🚀 How to Run
 
-### ✅ 1. Generate Self-Signed Certificates
+### ✅ 1. Generate Required TLS Certificates (**MANDATORY**)
 
-If you haven't already:
+Before starting the server, you **must** generate two self-signed TLS certificates. Without these, the QUIC server will
+not start.
 
 ```bash
 openssl req -x509 -newkey rsa:2048 -nodes -keyout server-key.pem -out server-cert.pem -days 365
 ```
 
-Place both `.pem` files in the root directory.
+Both `server-cert.pem` and `server-key.pem` must be placed in the **project root** directory.
 
-### ✅ 2. Start the Server
+---
+
+### ✅ 2. Run Scripts
+
+This project includes two helpful scripts to launch the server and client.
+
+#### ▶️ Start the Server
 
 ```bash
-java -cp target/Photon-Quic-1.0-SNAPSHOT.jar server.PhotonStreamServer
+./run-server.sh
 ```
 
 Expected output:
@@ -59,10 +108,10 @@ Expected output:
 PhotonStream QUIC Server started on port 9090
 ```
 
-### ✅ 3. Start the Client
+#### ▶️ Start the Client
 
 ```bash
-java -cp target/Photon-Quic-1.0-SNAPSHOT.jar client.PhotonStreamClient 127.0.0.1 9090
+./run-client.sh 127.0.0.1 9090
 ```
 
 Expected output:
@@ -71,6 +120,8 @@ Expected output:
 Session ID: 56789
 Sent END_SESSION
 ```
+
+> ℹ️ Make sure to `chmod +x run-server.sh run-client.sh` the first time to make the scripts executable.
 
 ---
 
@@ -106,7 +157,7 @@ Incorrect transitions are rejected, and the server logs "Unexpected message or s
 ## 🔐 Security
 
 - QUIC connections require TLS 1.3 (handled by Kwik).
-- The server uses a self-signed certificate (`server-cert.pem`, `server-key.pem`).
+- The server uses a **self-signed certificate**: `server-cert.pem` and `server-key.pem`.
 - The client disables certificate validation (`noServerCertificateCheck()`) for development purposes.
 - Authentication token (`authToken`) is included in INIT_REQUEST (e.g., "admin123").
 
@@ -143,6 +194,8 @@ src/
 ├── shared/
 │   ├── DFAValidator.java
 │   └── State.java
+run-server.sh
+run-client.sh
 ```
 
 ---
@@ -170,9 +223,8 @@ src/
 - ✅ DFA logic is implemented and validated
 - ✅ QUIC transport is properly used (via Kwik)
 - ✅ All source code is documented and modular
-- ✅ Self-contained and runnable on Linux, macOS, or WSL
-- ✅ No external configuration required
-- ✅ All protocol messages are custom-built (no 3rd party parsing)
+- ✅ Self-contained UBER JAR built with Shade Plugin
+- ✅ No external configuration required beyond the certs
 
 ---
 
