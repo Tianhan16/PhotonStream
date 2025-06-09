@@ -23,4 +23,14 @@
             <version>0.10.3</version>
         </dependency>
     </dependencies>
+
+    <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+            <mainClass>server.PhotonStreamServer</mainClass>
+        </configuration>
+    </plugin>
+
 </project>
