@@ -21,20 +21,24 @@ public class PhotonStreamServer {
 	public static void main(String[] args) throws Exception {
 		int port = 9090;
 
+		// Define supported QUIC versions
 		List<QuicConnection.QuicVersion> versions = new ArrayList<>();
 		versions.add(QuicConnection.QuicVersion.V1);
 		versions.add(QuicConnection.QuicVersion.V2);
 
+		// Configure QUIC server settings
 		ServerConnectionConfig config = ServerConnectionConfig.builder().maxIdleTimeoutInSeconds(30)
 				.maxUnidirectionalStreamBufferSize(1_000_000).maxBidirectionalStreamBufferSize(1_000_000)
 				.maxConnectionBufferSize(10_000_000).maxOpenPeerInitiatedUnidirectionalStreams(10)
 				.maxOpenPeerInitiatedBidirectionalStreams(100).retryRequired(false).connectionIdLength(8).build();
 
+		// Build and start QUIC server with TLS certificate and PhotonStream ALPN
 		ServerConnector connector = ServerConnector.builder().withPort(port).withSupportedVersions(versions)
 				.withConfiguration(config)
 				.withCertificate(new FileInputStream("server-cert.pem"), new FileInputStream("server-key.pem"))
 				.withLogger(new tech.kwik.core.log.SysOutLogger()).build();
 
+		// Register application protocol handler
 		connector.registerApplicationProtocol("PhotonStream", new PhotonProtocolFactory());
 
 		connector.start();
@@ -60,17 +64,21 @@ class PhotonConnectionHandler implements ApplicationProtocolConnection {
 	public void acceptPeerInitiatedStream(QuicStream stream) {
 		new Thread(() -> {
 			try (InputStream in = stream.getInputStream(); OutputStream out = stream.getOutputStream()) {
+				// Initialize protocol DFA for state tracking
 				DFAValidator dfa = new DFAValidator();
 
+				// Fully parse the INIT_REQUEST PDU from the input stream
 				InitRequest req = InitRequest.readFrom(in);
 				System.out.println("Received INIT_REQUEST with videoId: " + req.videoId);
 
+				// Validate transition to SESSION_INIT state
 				if (!dfa.onMessage(req.msgType)) {
 					System.out.println("Unexpected or invalid INIT_REQUEST message.");
 					out.write(PDUType.ERROR);
 					return;
 				}
 
+				// Construct and send INIT_RESPONSE
 				InitResponse resp = new InitResponse();
 				resp.msgType = PDUType.INIT_RESPONSE;
 				resp.protocolVersion = 1;
@@ -88,8 +96,9 @@ class PhotonConnectionHandler implements ApplicationProtocolConnection {
 				dout.writeInt(resp.bitrateKbps);
 				dout.writeInt(resp.sessionId);
 
-				dfa.onMessage(resp.msgType);
+				dfa.onMessage(resp.msgType); // Transition to STREAMING
 
+				// Expect END_SESSION as the follow-up message
 				byte followup = (byte) in.read();
 				System.out.println("Received followup message: 0x" + String.format("%02X", followup));
 				System.out.println("Current DFA state before followup: " + dfa.getState());
